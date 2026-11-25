@@ -11,6 +11,11 @@ the usual "read the aura and draw it" addon never shows anything when it matters
 ![WoW](https://img.shields.io/badge/WoW-Forever%201.60.1-F2C94C?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-6FD4A4?style=flat-square)
 
+![SealEcho at three stacks](preview.svg)
+
+<sub>Three stacks of Echo of Fury: each slot lit and pulsing in the Seal's colour, the countdown
+strip draining underneath.</sub>
+
 ---
 
 ## What it shows
