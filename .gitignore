@@ -1,0 +1,10 @@
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+Core.lua.bak-*
+*.bak
+_backup_*/

@@ -1,0 +1,7 @@
+package-as: SealEcho
+
+enable-nolib-creation: no
+
+ignore:
+  - README.md
+  - .github

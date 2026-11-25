@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: SealEcho
+## Notes: Three-segment bar for Unsealed Wrath echo stacks, with duration and the Seal you are holding.
+## Notes-deDE: Leiste für Unsealed-Wrath-Echostapel, mit Restzeit und dem gehaltenen Siegel.
+## Notes-frFR: Barre des cumuls d'écho d'Unsealed Wrath, avec le temps restant et le sceau porté.
+## Notes-esES: Barra de acumulaciones de eco de Unsealed Wrath, con tiempo restante y el sello activo.
+## Notes-ruRU: Полоса зарядов эха Unsealed Wrath с оставшимся временем и активной печатью.
+## Version: 1.0
+## Author: SkyTezz
+## IconTexture: Interface\Icons\spell_holy_blessedresillience
+## SavedVariables: SealEchoDB
+
+Locale.lua
+Core.lua
+Options.lua
