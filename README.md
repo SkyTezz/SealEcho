@@ -60,9 +60,11 @@ Esc → Options → AddOns → SealEcho, or `/se`.
 
 - **Position** — lock, drag, or right-click the minimap icon.
 - **Visibility** — Always · In combat only · Only with an active echo · Never.
-- **Display** — Seal icon, countdown seconds, pulse, minimap icon.
+- **Display** — Seal icon, countdown seconds, pulse glow, minimap icon.
 - **Size** — width, slot height, gap, scale.
-- **Colour** — slot fill, plus an **RGB picker per Seal** for the pulse colour.
+- **Seal colours** — an **RGB picker per Seal** for its fill and glow colour.
+- **Preview (5s)** shows the bar for five seconds; **Reset to defaults** restores every setting
+  and keeps the echoes you have already learned.
 
 ## How it works (for addon authors)
 
