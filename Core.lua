@@ -41,7 +41,7 @@ ns.DEFAULTS = {
     learned    = {},
 }
 
-local root, chrome, container, builtSig, lastError
+local root, chrome, container, builtSig, lastError, pendingRebuild
 
 function ns.Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cffffd24dSealEcho|r: " .. tostring(msg))
@@ -114,6 +114,27 @@ local function TimeColorCurve()
     return timeCurve or nil
 end
 
+local SEAL_ALIAS = {
+    ["Command"] = "Command", ["Righteousness"] = "Righteousness", ["Fury"] = "Fury",
+    ["Justice"] = "Justice", ["Light"] = "Light", ["Wisdom"] = "Wisdom",
+    ["Befehls"] = "Command", ["Rechtschaffenheit"] = "Righteousness", ["Zorns"] = "Fury",
+    ["Gerechtigkeit"] = "Justice", ["Lichts"] = "Light", ["Weisheit"] = "Wisdom",
+    ["autorité"] = "Command", ["piété"] = "Righteousness", ["fureur"] = "Fury",
+    ["justice"] = "Justice", ["lumière"] = "Light", ["sagesse"] = "Wisdom",
+    ["orden"] = "Command", ["rectitud"] = "Righteousness", ["furia"] = "Fury",
+    ["justicia"] = "Justice", ["luz"] = "Light", ["sabiduría"] = "Wisdom",
+}
+
+local function MatchSealName(auraName)
+    local raw = auraName:match("^Echo of (.+)$")
+        or auraName:match("^Echo de[sr] (.+)$")
+        or auraName:match("^Écho d[e'] ?(.+)$")
+        or auraName:match("^Eco de (.+)$")
+    if not raw then return nil end
+    if SEAL_COLOR[raw] then return raw end
+    return SEAL_ALIAS[raw] or SEAL_ALIAS[raw:lower()]
+end
+
 local function LearnFromAuras()
     if not Safe() then return false end
     if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return false end
@@ -124,7 +145,7 @@ local function LearnFromAuras()
         local name    = Readable(Field(aura, "name"))
         local spellID = Readable(Field(aura, "spellId"))
         if name and spellID then
-            local seal = name:match("^Echo of (.+)$")
+            local seal = MatchSealName(name)
             if seal and SEAL_COLOR[seal] and ns.db.learned[spellID] ~= seal then
                 ns.db.learned[spellID] = seal
                 changed = true
@@ -139,7 +160,12 @@ local function LearnedSig()
     local ids = {}
     for id in pairs(ns.db.learned) do ids[#ids + 1] = id end
     table.sort(ids)
-    return table.concat(ids, ",") .. "|" .. tostring(ns.db.flash)
+    return table.concat(ids, ",")
+        .. "|" .. tostring(ns.db.flash)
+        .. "|" .. tostring(ns.db.showSeal)
+        .. "|" .. tostring(ns.db.showText)
+        .. "|" .. tostring(ns.db.height)
+        .. "|" .. tostring(ns.db.timerH)
 end
 
 local function LearnedIDSet()
@@ -212,8 +238,9 @@ function ns.Layout()
     local db = ns.db
     local iconSize, iconGap, span, gap, cellW = CellGeometry(db)
 
+    local th = db.timerH or 3
     root:SetScale(db.scale)
-    root:SetSize(db.width, db.height + 7)
+    root:SetSize(db.width, db.height + 4 + th + 2)
     root:EnableMouse(not db.locked)
     root:ClearAllPoints()
     root:SetPoint(db.point[1], UIParent, db.point[3], db.point[4], db.point[5])
@@ -223,12 +250,13 @@ function ns.Layout()
     chrome.icon:SetPoint("TOPLEFT", root, "TOPLEFT", 0, 0)
     chrome.icon:SetSize(math.max(iconSize, 1), math.max(iconSize, 1))
 
+    local previewColor = SealColor("Fury") or db.fill
     for i, cell in ipairs(chrome.cells) do
         local x = iconSize + iconGap + (i - 1) * (cellW + gap)
         cell:ClearAllPoints()
         cell:SetPoint("TOPLEFT", root, "TOPLEFT", x, 0)
         cell:SetSize(cellW, db.height)
-        cell.preview:SetVertexColor(db.fill[1], db.fill[2], db.fill[3], 1)
+        cell.preview:SetVertexColor(previewColor[1], previewColor[2], previewColor[3], 1)
     end
 
     ns.geo = { iconSize = iconSize, cellW = cellW, height = db.height }
@@ -315,7 +343,7 @@ local function StyleMain(button)
         pcall(icon.AddMaskTexture, icon, mask)
     end
 
-    local th = db.timerH or 4
+    local th = db.timerH or 3
 
     local tEdge = button:CreateTexture(nil, "BACKGROUND")
     tEdge:SetTexture(TEXPILL)
@@ -433,10 +461,15 @@ local function BuildContainer()
     return true
 end
 
-local function UpdateVisibility()
+local function UpdateVisibility(forceCombat)
     local db = ns.db
     local mode = db.showMode or "always"
-    local inCombat = InCombatLockdown()
+    local inCombat
+    if forceCombat ~= nil then
+        inCombat = forceCombat
+    else
+        inCombat = InCombatLockdown() or (UnitAffectingCombat and UnitAffectingCombat("player")) or false
+    end
     if mode == "never" then
         root:Hide()
         return
@@ -451,17 +484,25 @@ local function UpdateVisibility()
     root:SetAlpha(showChrome and 0.85 or 1)
 end
 
-function ns.Update()
+function ns.Update(forceCombat)
     if not root then return end
     if Safe() then
         if LearnFromAuras() then builtSig = nil end
+        if pendingRebuild then
+            pendingRebuild = nil
+            TearDown()
+        end
         BuildContainer()
     end
-    UpdateVisibility()
+    UpdateVisibility(forceCombat)
 end
 
 function ns.ForceRebuild()
-    if not Safe() then return false end
+    if not Safe() then
+        pendingRebuild = true
+        return false
+    end
+    pendingRebuild = nil
     TearDown()
     ns.Update()
     return true
@@ -587,10 +628,12 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         ns.Update()
         return
     end
-    if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_ENTERING_WORLD" then
+    if event == "PLAYER_REGEN_ENABLED" then
+        ns.Update(false)
+    elseif event == "PLAYER_ENTERING_WORLD" then
         ns.Update()
     elseif event == "PLAYER_REGEN_DISABLED" then
-        UpdateVisibility()
+        UpdateVisibility(true)
     elseif event == "UNIT_AURA" then
         if Safe() then ns.Update() end
     end

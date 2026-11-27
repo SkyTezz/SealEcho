@@ -42,37 +42,6 @@ local function MakeSlider(parent, name, label, key, minVal, maxVal, step, format
     return slider
 end
 
-local function MakeColor(parent, label, key)
-    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    button:SetSize(150, 22)
-    button:SetText(label)
-    local swatch = button:CreateTexture(nil, "OVERLAY")
-    swatch:SetSize(14, 14)
-    swatch:SetPoint("LEFT", button, "RIGHT", 8, 0)
-    button.Load = function()
-        local c = ns.db[key]
-        swatch:SetColorTexture(c[1], c[2], c[3], 1)
-    end
-    button:SetScript("OnClick", function()
-        local c = ns.db[key]
-        local function Apply()
-            local r, g, b = ColorPickerFrame:GetColorRGB()
-            ns.db[key] = { r, g, b }
-            swatch:SetColorTexture(r, g, b, 1)
-            ns.Layout(); ns.Update()
-        end
-        ColorPickerFrame:SetupColorPickerAndShow({
-            r = c[1], g = c[2], b = c[3], swatchFunc = Apply,
-            cancelFunc = function()
-                ns.db[key] = { c[1], c[2], c[3] }
-                swatch:SetColorTexture(c[1], c[2], c[3], 1); ns.Layout()
-            end,
-        })
-    end)
-    widgets[#widgets + 1] = button
-    return button
-end
-
 local function MakeSealColor(parent, seal)
     local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     button:SetSize(118, 20)
@@ -113,15 +82,19 @@ local function MakeSealColor(parent, seal)
     return button
 end
 
-local function MakeHeader(parent, text)
-    local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+local function MakeHeader(parent, text, width)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetSize(width, 16)
+    local fs = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    fs:SetPoint("LEFT", row, "LEFT", 0, 0)
     fs:SetText(text)
     fs:SetTextColor(0.96, 0.82, 0.36)
-    local line = parent:CreateTexture(nil, "ARTWORK")
+    local line = row:CreateTexture(nil, "ARTWORK")
     line:SetHeight(1)
     line:SetColorTexture(0.96, 0.82, 0.36, 0.2)
-    fs.line = line
-    return fs
+    line:SetPoint("LEFT", fs, "RIGHT", 8, 0)
+    line:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+    return row
 end
 
 local function Relayout() ns.Layout(); ns.Update() end
@@ -168,11 +141,10 @@ function ns.BuildOptions()
     sub:SetText(L["Unsealed Wrath echo-stack bar - readable even in combat."])
 
     local LX, RX, TOP = 22, 322, -74
+    local LW, RW = RX - LX - 26, 236
 
-    local hPos = MakeHeader(panel, L["POSITION"])
+    local hPos = MakeHeader(panel, L["POSITION"], LW)
     hPos:SetPoint("TOPLEFT", LX, TOP)
-    hPos.line:SetPoint("LEFT", hPos, "RIGHT", 8, 0)
-    hPos.line:SetPoint("RIGHT", panel, "LEFT", RX - 26, TOP - 7)
 
     local lock = MakeCheck(panel, "SealEchoLockCheck", L["Lock position"], "locked", Relayout)
     lock:SetPoint("TOPLEFT", hPos, "BOTTOMLEFT", -2, -6)
@@ -180,10 +152,8 @@ function ns.BuildOptions()
     lockHint:SetPoint("TOPLEFT", lock, "BOTTOMLEFT", 4, 0)
     lockHint:SetText(L["Unlocked: drag the bar, or right-click the minimap icon."])
 
-    local hVis = MakeHeader(panel, L["VISIBILITY"])
+    local hVis = MakeHeader(panel, L["VISIBILITY"], LW)
     hVis:SetPoint("TOPLEFT", lockHint, "BOTTOMLEFT", -4, -14)
-    hVis.line:SetPoint("LEFT", hVis, "RIGHT", 8, 0)
-    hVis.line:SetPoint("RIGHT", panel, "LEFT", RX - 26, 0)
 
     local rAlways = MakeRadio(panel, "SealEchoModeAlways", L["Always"], "always", ModeChanged)
     rAlways:SetPoint("TOPLEFT", hVis, "BOTTOMLEFT", -1, -6)
@@ -194,24 +164,20 @@ function ns.BuildOptions()
     local rNever = MakeRadio(panel, "SealEchoModeNever", L["Never (hide completely)"], "never", ModeChanged)
     rNever:SetPoint("TOPLEFT", rEcho, "BOTTOMLEFT", 0, -2)
 
-    local hShow = MakeHeader(panel, L["DISPLAY"])
+    local hShow = MakeHeader(panel, L["DISPLAY"], LW)
     hShow:SetPoint("TOPLEFT", rNever, "BOTTOMLEFT", -1, -14)
-    hShow.line:SetPoint("LEFT", hShow, "RIGHT", 8, 0)
-    hShow.line:SetPoint("RIGHT", panel, "LEFT", RX - 26, 0)
 
     local showSeal = MakeCheck(panel, "SealEchoSealCheck", L["Seal icon"], "showSeal", Relayout)
     showSeal:SetPoint("TOPLEFT", hShow, "BOTTOMLEFT", -2, -6)
     local showText = MakeCheck(panel, "SealEchoTextCheck", L["Countdown seconds"], "showText", Relayout)
     showText:SetPoint("TOPLEFT", showSeal, "BOTTOMLEFT", 0, -2)
-    local flash = MakeCheck(panel, "SealEchoFlashCheck", L["Pulse at full stacks"], "flash", Relayout)
+    local flash = MakeCheck(panel, "SealEchoFlashCheck", L["Pulse glow"], "flash", Relayout)
     flash:SetPoint("TOPLEFT", showText, "BOTTOMLEFT", 0, -2)
     local mmap = MakeCheck(panel, "SealEchoMinimapCheck", L["Minimap icon"], "minimap", Relayout)
     mmap:SetPoint("TOPLEFT", flash, "BOTTOMLEFT", 0, -2)
 
-    local hSize = MakeHeader(panel, L["SIZE"])
+    local hSize = MakeHeader(panel, L["SIZE"], RW)
     hSize:SetPoint("TOPLEFT", RX, TOP)
-    hSize.line:SetPoint("LEFT", hSize, "RIGHT", 8, 0)
-    hSize.line:SetPoint("RIGHT", panel, "LEFT", RX + 236, TOP - 7)
 
     local width = MakeSlider(panel, "SealEchoWidthSlider", L["Width"], "width", 120, 500, 2, "%d", Relayout)
     width:SetPoint("TOPLEFT", hSize, "BOTTOMLEFT", 6, -22)
@@ -222,28 +188,18 @@ function ns.BuildOptions()
     local scale = MakeSlider(panel, "SealEchoScaleSlider", L["Scale"], "scale", 0.5, 2.5, 0.05, "%.2f", Relayout)
     scale:SetPoint("TOPLEFT", gap, "BOTTOMLEFT", 0, -34)
 
-    local hColor = MakeHeader(panel, L["COLOR"])
-    hColor:SetPoint("TOPLEFT", scale, "BOTTOMLEFT", -6, -24)
-    hColor.line:SetPoint("LEFT", hColor, "RIGHT", 8, 0)
-    hColor.line:SetPoint("RIGHT", panel, "LEFT", RX + 236, 0)
-
-    local fill = MakeColor(panel, L["Stack color"], "fill")
-    fill:SetPoint("TOPLEFT", hColor, "BOTTOMLEFT", 6, -10)
+    local hSeal = MakeHeader(panel, L["SEAL COLOURS"], RW)
+    hSeal:SetPoint("TOPLEFT", scale, "BOTTOMLEFT", -6, -24)
     local colorHint = panel:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    colorHint:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, -6)
-    colorHint:SetText(L["Slot fill. The pulse colour comes from the seal below."])
-
-    local hSeal = MakeHeader(panel, L["SEAL COLOURS"])
-    hSeal:SetPoint("TOPLEFT", colorHint, "BOTTOMLEFT", 0, -16)
-    hSeal.line:SetPoint("LEFT", hSeal, "RIGHT", 8, 0)
-    hSeal.line:SetPoint("RIGHT", panel, "LEFT", RX + 236, 0)
+    colorHint:SetPoint("TOPLEFT", hSeal, "BOTTOMLEFT", 0, -4)
+    colorHint:SetText(L["Fill and glow colour per Seal."])
 
     local lastSealRow
     for idx, seal in ipairs(ns.SEAL_ORDER or {}) do
         local b = MakeSealColor(panel, seal)
         b:SetSize(96, 20)
         local col, row = (idx - 1) % 2, math.floor((idx - 1) / 2)
-        b:SetPoint("TOPLEFT", hSeal, "BOTTOMLEFT", 6 + col * 120, -8 - row * 23)
+        b:SetPoint("TOPLEFT", colorHint, "BOTTOMLEFT", 6 + col * 120, -8 - row * 23)
         if col == 0 then lastSealRow = b end
     end
 
@@ -259,10 +215,16 @@ function ns.BuildOptions()
     reset:SetSize(130, 22)
     reset:SetText(L["Reset to defaults"])
     reset:SetScript("OnClick", function()
+        local keepLearned = ns.db.learned
         for key, value in pairs(ns.DEFAULTS) do
-            ns.db[key] = (type(value) == "table") and CopyTable(value) or value
+            if key ~= "learned" then
+                ns.db[key] = (type(value) == "table") and CopyTable(value) or value
+            end
         end
-        Relayout(); ns.Rebuild()
+        ns.db.learned = keepLearned or {}
+        ns.Layout()
+        if ns.ForceRebuild then ns.ForceRebuild() else ns.Update() end
+        ns.Rebuild()
     end)
 
     panel:SetScript("OnShow", function() ns.Rebuild() end)
